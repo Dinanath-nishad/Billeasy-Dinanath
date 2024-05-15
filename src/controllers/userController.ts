@@ -1,14 +1,17 @@
 import { Request, Response } from "express";
-import User from '../models/userSchema'
+import User, { IUser } from '../models/userSchema'
+import sgMail from '@sendgrid/mail';
 import Otp from "../models/otpSchema"
-import Carpenter from "../models/carpenterSchema";
+import { userValidationSchema, loginValidationSchema } from "../utils/schemaValidation";
+
 import bcrypt from "bcrypt";
 import jwt, { } from 'jsonwebtoken';
 import { error } from "console";
-
+import Carpenter, { ICarpenter } from "../models/carpenterSchema";
 import nodemailer from "nodemailer"
 import { Document } from 'mongoose';
 import { number } from "joi";
+import { decrypt } from 'n-krypta';
 
 var smtpTransport = nodemailer.createTransport({
 
@@ -32,29 +35,51 @@ interface SignUpBody {
    token: string
 }
 
+// export const register = async (req: Request, res: Response) => {
+//    const { first_name, last_name, age, address, email, password, token = "" }: SignUpBody = req.body;
+
+//    try {
+//       const newUser = new User({ first_name, last_name, address, email, password, age, token });
+//       const existingUser = await User.findOne({ email: email });
+//       if (existingUser) {
+//          return res.status(400).json({ message: 'User already exists' });
+//       }
+//       else {
+//          await newUser.save();
+//          return res.status(201).json({ message: 'User registered successfully' });
+//       }
+
+//    } catch (error) {
+//       console.error('Error during user registration:', error);
+//       return res.status(500).json({ message: 'Internal server error' });
+//    }
+// }
+
+
+
 export const register = async (req: Request, res: Response) => {
-
-   const { first_name, last_name, age, address, email, password, token = "" }: SignUpBody = req.body;
-
    try {
-
-
-      const newUser = new User({ first_name, last_name, address, email, password, age, token });
+      // Validate user input
+      const { error, value } = userValidationSchema.validate(req.body);
+      if (error) {
+         return res.status(400).json({ error: error.details.map(detail => detail.message).join(', ') });
+      }
+      const { first_name, email, password, confirm_password } = value;
       const existingUser = await User.findOne({ email: email });
       if (existingUser) {
          return res.status(400).json({ message: 'User already exists' });
       }
-      else {
-         await newUser.save();
-         return res.status(201).json({ message: 'User registered successfully' });
-      }
-
+      // Create new user
+      const newUser = new User({ first_name, email, password, confirm_password, });
+      await newUser.save();
+      return res.status(201).json({ message: true });
    } catch (error) {
       console.error('Error during user registration:', error);
       return res.status(500).json({ message: 'Internal server error' });
    }
-
 }
+
+
 
 
 interface SignIn {
@@ -62,10 +87,15 @@ interface SignIn {
    password: string
 }
 export const login = async (req: Request, res: Response) => {
-   const { email, password }: SignIn = req.body;
-   const SECRET_KEY: string = "dinanath";
 
    try {
+      const { error, value } = userValidationSchema.validate(req.body);
+      if (error) {
+         return res.status(400).json({ error: error.details.map(detail => detail.message).join(', ') });
+      }
+      const { email, password }: SignIn = value;
+
+      const SECRET_KEY: string = "dinanath";
       const user = await User.findOne({ email: email });
 
       if (!user) {
@@ -131,6 +161,42 @@ export const login = async (req: Request, res: Response) => {
       return res.status(500).json({ message: 'Internal server error' });
    }
 }
+
+
+export const userLogin = async (req: Request, res: Response) => {
+   try {
+
+      const { email, password } = req.body;
+      const secretKey = "DINADRRSPVTLTD";
+      const decrpt = decrypt(password, secretKey);
+
+      if (!email || !password) {
+         return res.status(400).json({ error: "Plz fill the data" });
+      }
+      const userLogin = await User.findOne({ email: email });
+      console.log("first", decrpt)
+      if (userLogin) {
+         const isMatch = await bcrypt.compare(decrpt, userLogin.password);
+         if (!isMatch) {
+            return res.status(400).json({ error: "Invlalid Credentials" });
+         } else {
+            const token = await userLogin.generateAuthToken();
+            await User.updateOne({ email: email }, { $set: { "token": token } }, { multi: true })
+            res.cookie("jwtoken", token, {
+               expires: new Date(Date.now() + 86400000), httpOnly: false
+            });
+         }
+      } else {
+         return res.status(400).json({ error: "Invlalid Credentials" });
+
+      }
+
+
+
+   } catch (error) {
+
+   }
+}
 interface verifyOtp {
    email: String
    otp: Number
@@ -179,29 +245,36 @@ export const verifyOtp = async (req: Request, res: Response) => {
 };
 
 
-interface CarpenterBody {
-   first_name: string,
-   last_name: string,
-   experience: number,
-   address: string,
-   email: string
-}
 
-export const postCarpenter = async (req: Request, res: Response) => {
-   try {
-      const { first_name, last_name, experience, address, email, }: CarpenterBody = req.body;
-      const carpenter = await Carpenter.findOne({ email: email })
-      if (carpenter) {
-         return res.json({ message: "user already exist..." })
-      }
-      const obj = await new Carpenter({ first_name, last_name, experience, address, email })
-      await obj.save();
-      return res.status(201).json({ message: 'Carpenter  created successfully!' });
-   } catch (error) {
-      console.error('Error during user registration:', error);
-      return res.status(500).json({ message: 'Internal server error' });
-   }
-}
+// export const postCarpenter = async (req: Request, res: Response) => {
+//    try {
+//       const { title, description, workType, itemName, repairType, estimatedCost, dateRequested, status }: ICarpenter = req.body;
+//       const photo: { name: string, data: Buffer, contentType: string }[] = req.body.photo;
+//       console.log(req.body, "first", photo)
+//       // Check if photo array exists and contains elements
+//       if (!photo || photo.length === 0) {
+//          return res.status(400).json({ message: 'No photo data provided' });
+//       }
+
+//       const { name, data, contentType } = photo[0];
+//       const carpenter = await Carpenter.findOne({ title: title });
+//       if (carpenter) {
+//          return res.json({ message: "User already exists..." });
+//       }
+
+//       await Carpenter.create({
+//          title, description, workType, itemName, repairType, estimatedCost, dateRequested, status, photo: [{ name, data, contentType }]
+//       });
+
+//       return res.status(201).json({ message: 'Carpenter created successfully!' });
+//    } catch (error) {
+//       console.error('Error during user registration:', error);
+//       return res.status(500).json({ message: 'Internal server error' });
+//    }
+// }
+
+
+
 
 export const getCarpenter = async (req: Request, res: Response) => {
    try {
@@ -235,12 +308,6 @@ export const getParamsCar = async (req: Request, res: Response) => {
 
 
 
-type ErrorType = Error | null;
-type PositionType = {
-   coords: {
-      latitude: number;
-      longitude: number;
-   };
-};
+
 
 

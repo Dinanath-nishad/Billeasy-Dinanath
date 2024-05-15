@@ -1,17 +1,20 @@
 import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcrypt";
 import Jwt from "jsonwebtoken";
-interface User {
+import jwt, { Secret } from 'jsonwebtoken';
+interface IUser {
     first_name: string;
     last_name: string;
     email: string;
     password: string;
+    confirm_password: string;
     address: string;
     age: number;
-    token: string
+    token: string;
+    generateAuthToken(): Promise<string>;
 }
 
-const userSchema = new Schema<User>({
+const userSchema = new Schema<IUser>({
     first_name: {
         type: String,
         required: false
@@ -28,6 +31,10 @@ const userSchema = new Schema<User>({
         type: String,
         required: true
     },
+    // confirm_password: {
+    //     type: String,
+    //     required: true
+    // },
     token: {
         type: String,
         required: false
@@ -53,7 +60,7 @@ userSchema.pre('save', async function (next) {
     next();
 });
 
-import jwt, { Secret } from 'jsonwebtoken';
+
 
 userSchema.methods.generateAuthToken = async function (): Promise<string> {
     try {
@@ -73,6 +80,7 @@ userSchema.methods.generateAuthToken = async function (): Promise<string> {
     }
 };
 
-const User = model<User>('user', userSchema);
+const User = model<IUser>('user', userSchema);
 
 export default User
+export { IUser };
