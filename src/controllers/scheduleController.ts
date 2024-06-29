@@ -1,16 +1,9 @@
 import { Request, Response } from "express";
 import User from '../models/userSchema'
-import Otp from "../models/otpSchema"
-import Carpenter from "../models/carpenterSchema";
 import AppointmentModel, { IAppointment } from '../models/appointmentSchema';
 import Service, { IServise } from "../models/service";
-import bcrypt from "bcrypt";
-import jwt from 'jsonwebtoken';
-
-
 import nodemailer from "nodemailer"
-import { Document } from 'mongoose';
-import { number } from "joi";
+
 
 
 

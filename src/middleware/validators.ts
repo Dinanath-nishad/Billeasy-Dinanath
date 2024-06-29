@@ -1,9 +1,10 @@
-import  { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi'
-import User from '../models/userSchema';
+import rateLimit from 'express-rate-limit';
+import { IUser } from '../models/userSchema';
 
 export const validateUserData = (req: Request, res: Response, next: NextFunction) => {
-    const userSchema = Joi.object<User>({
+    const userSchema = Joi.object<IUser>({
         first_name: Joi.string().alphanum().min(3).max(30).required(),
         last_name: Joi.string().min(3).max(30).required(),
 
@@ -26,6 +27,14 @@ export const validateUserData = (req: Request, res: Response, next: NextFunction
     }
 }
 
+
+
+export const rateLimiter = rateLimit({
+    windowMs: 2 * 60 * 1000, // 1 hour window
+    max: 2, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again after an hour',
+    headers: true,
+});
 
 
 

@@ -1,3 +1,4 @@
+import { required } from "joi";
 import { Schema, model, Document } from "mongoose";
 interface IBlog {
     name: string;
@@ -14,6 +15,7 @@ interface IBlog {
     authorPhoto: string
     content: { type: string, data: string }[]
     links: { internal_link: string }[]
+    subTitle: string
 }
 
 
@@ -24,6 +26,10 @@ const blogSchema = new Schema<IBlog>({
     contentType: String,
 
     title: {
+        type: String,
+        required: false
+    },
+    subTitle: {
         type: String,
         required: false
     },
@@ -68,10 +74,14 @@ const blogSchema = new Schema<IBlog>({
             type: String,
             required: false
         }
-    }]
+    }],
+
 },
 )
-
+// Single field index
+blogSchema.index({ title: 1 });
+// Compound index
+blogSchema.index({ description: 1, title: -1 });
 
 const Blog = model<IBlog>('Blog', blogSchema);
 

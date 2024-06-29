@@ -10,15 +10,32 @@ const app = express();
 import { MongoClient } from 'mongodb';
 import "./db/dbconnect";
 
+
+
 const PORT = process.env.PORT || 3000;
 import router from './routes/userRoute';
 
+
+
 app.use(cors());
+
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
+
 app.use(cookieParser());
 app.use(bodyParser.json());
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(helmet());
+
+
+
 app.get('/', (req: Request, res: Response): void => {
   res.json({ data: 'Hello, TypeScript Server!' });
 });
