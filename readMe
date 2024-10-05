@@ -5,3 +5,5 @@ npm i -g typescript
 3) npm install @types/node
 4) npm install -g ts-node //To run ts file:npx ts-node filename
 5) npm i express @types/express nodemon ts-node @types/node typescript
+
+
