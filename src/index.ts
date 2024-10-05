@@ -7,14 +7,13 @@ import helmet from 'helmet'
 import cors from 'cors'
 dotenv.config();
 const app = express();
-import { MongoClient } from 'mongodb';
+
 import "./db/dbconnect";
 
 
 
 const PORT = process.env.PORT || 3000;
 import router from './routes/userRoute';
-
 
 
 app.use(cors());

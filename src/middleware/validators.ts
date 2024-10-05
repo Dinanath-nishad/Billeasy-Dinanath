@@ -5,19 +5,11 @@ import { IUser } from '../models/userSchema';
 
 export const validateUserData = (req: Request, res: Response, next: NextFunction) => {
     const userSchema = Joi.object<IUser>({
-        first_name: Joi.string().alphanum().min(3).max(30).required(),
-        last_name: Joi.string().min(3).max(30).required(),
-
+        name: Joi.string().alphanum().min(3).max(30).required(),
         password: Joi.string(),
         email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'io'] } }),
-        // repeat_password: Joi.ref('password'),
-        // access_token: [
-        //    Joi.string(),
-        //    Joi.number()
-        // ],
-
-        age: Joi.number().integer().min(18).max(55),
-        address: Joi.string().alphanum().min(3).max(30).required(),
+        type: Joi.number().integer().min(18).max(55),
+     
     })
     const valid = userSchema.validate(req.body);
     if (valid?.error) {

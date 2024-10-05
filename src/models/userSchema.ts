@@ -1,27 +1,22 @@
 import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcrypt";
-import Jwt from "jsonwebtoken";
 import jwt, { Secret } from 'jsonwebtoken';
-interface IUser {
-    first_name: string;
-    last_name: string;
+
+
+interface IUser extends Document {
+    name?: string;
     email: string;
+    type?: string;
     password: string;
-    confirm_password: string;
-    address: string;
-    age: number;
-    token: string;
+    token?: string;
     generateAuthToken(): Promise<string>;
 }
 
+// Define the user schema
 const userSchema = new Schema<IUser>({
-    first_name: {
+    name: {
         type: String,
-        required: false
-    },
-    last_name: {
-        type: String,
-        required: false
+        required: false // Marking it as optional
     },
     email: {
         type: String,
@@ -31,56 +26,43 @@ const userSchema = new Schema<IUser>({
         type: String,
         required: true
     },
-    // confirm_password: {
-    //     type: String,
-    //     required: true
-    // },
+    type: {
+        type: String,
+        required: false // Optional
+    },
     token: {
         type: String,
-        required: false
+        required: false // Optional
     },
-    address: {
-        type: String,
-        required: false
-    },
-    age: {
-        type: Number,
-        required: false
-    },
+}, { timestamps: true });
 
-},
-    { timestamps: true }
-)
-
-
+// Hash password before saving
 userSchema.pre('save', async function (next) {
-    if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, 12);
+    const user = this as IUser;
+    if (user.isModified('password')) {
+        const saltRounds = process.env.SALT_ROUNDS ? parseInt(process.env.SALT_ROUNDS) : 12;
+        user.password = await bcrypt.hash(user.password, saltRounds);
     }
     next();
 });
 
-
-
+// Generate JWT Token method
 userSchema.methods.generateAuthToken = async function (): Promise<string> {
     try {
-        const payload = { _id: this._id, email: this.email, name: this.first_name };
-        const secretOrPrivateKey: Secret = process.env.SECRET_KEY || ''; // Specify the type for secretOrPrivateKey
-
-        // Generate JWT token
-        const token = jwt.sign(payload, secretOrPrivateKey);
-
-        // Save the user document and await the promise
-        await this.save();
-        console.log(token, "auth token");
+        const user = this as IUser;
+        const payload = { _id: user._id, email: user.email, name: user.name };
+        const secretOrPrivateKey: Secret = process.env.SECRET_KEY || '';
+        const token = jwt.sign(payload, secretOrPrivateKey, { expiresIn: '24h' });
+        user.token = token; // Save the token
+        await user.save(); // Save the user with the token
         return token;
     } catch (err) {
-        console.error(err);
-        throw err; // Rethrow the error to be handled by the caller
+        console.error('Error generating auth token:', err);
+        throw err;
     }
 };
 
-const User = model<IUser>('user', userSchema);
-
-export default User
+// Create and export the User model
+const User = model<IUser>('User', userSchema);
+export default User;
 export { IUser };
